@@ -1,0 +1,168 @@
+-- 01_schema.sql  (MySQL 8.0.16 trở lên)
+DROP DATABASE IF EXISTS dacn_phancong;
+CREATE DATABASE dacn_phancong CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE dacn_phancong;
+
+CREATE TABLE ChuongTrinhDaoTao (
+  MaCTDT       VARCHAR(30)  PRIMARY KEY,
+  TenCTDT      VARCHAR(150) NOT NULL,
+  NganhDaoTao  VARCHAR(100),
+  KhoaHoc      VARCHAR(20),
+  TongSoTinChi INT,
+  NamBanHanh   INT
+);
+
+CREATE TABLE KhoiKienThuc (
+  MaKKT  VARCHAR(40)  PRIMARY KEY,
+  TenKKT VARCHAR(100) NOT NULL,
+  MaCTDT VARCHAR(30)  NOT NULL,
+  FOREIGN KEY (MaCTDT) REFERENCES ChuongTrinhDaoTao(MaCTDT)
+);
+
+CREATE TABLE BoMon (
+  MaBoMon       VARCHAR(20)  PRIMARY KEY,
+  TenBoMon      VARCHAR(100) NOT NULL,
+  MaTruongBoMon VARCHAR(20)  NULL
+);
+
+CREATE TABLE GiangVien (
+  MaGV           VARCHAR(20)  PRIMARY KEY,
+  HoTen          VARCHAR(100) NOT NULL,
+  HocHamHocVi    VARCHAR(20),
+  Status         VARCHAR(20)  NOT NULL DEFAULT 'CHINH_THUC',
+  HeSoLuong      DECIMAL(4,2),
+  MaBoMon        VARCHAR(20)  NOT NULL,
+  SemesterCap    DECIMAL(6,1) NOT NULL DEFAULT 0,
+  SemesterTarget DECIMAL(6,1) NULL,
+  FOREIGN KEY (MaBoMon) REFERENCES BoMon(MaBoMon)
+);
+
+-- BoMon và GiangVien tham chiếu lẫn nhau nên FK này thêm sau
+ALTER TABLE BoMon
+  ADD CONSTRAINT fk_bomon_truong FOREIGN KEY (MaTruongBoMon) REFERENCES GiangVien(MaGV);
+
+CREATE TABLE HocKy (
+  MaHocKy          VARCHAR(20) PRIMARY KEY,
+  TenHocKy         VARCHAR(50) NOT NULL,
+  NamHoc           VARCHAR(20) NOT NULL,
+  RegistrationOpen TINYINT(1)  NOT NULL DEFAULT 0,
+  Revision         INT         NOT NULL DEFAULT 0
+);
+
+CREATE TABLE PhongHoc (
+  MaPhong   VARCHAR(20) PRIMARY KEY,
+  TenPhong  VARCHAR(50),
+  SucChua   INT,
+  LoaiPhong VARCHAR(20)
+);
+
+CREATE TABLE KeHoachBoMon (
+  MaHocKy     VARCHAR(20) NOT NULL,
+  MaBoMon     VARCHAR(20) NOT NULL,
+  TrangThai   VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+  LyDoTraVe   TEXT NULL,
+  NgayCapNhat DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (MaHocKy, MaBoMon),
+  FOREIGN KEY (MaHocKy) REFERENCES HocKy(MaHocKy),
+  FOREIGN KEY (MaBoMon) REFERENCES BoMon(MaBoMon),
+  CONSTRAINT ck_khbm_trangthai CHECK (TrangThai IN ('DRAFT','SUBMITTED','APPROVED','RETURNED'))
+);
+
+CREATE TABLE MonHoc (
+  MaMonHoc       VARCHAR(40)  PRIMARY KEY,
+  TenMonHoc      VARCHAR(150) NOT NULL,
+  SoTinChi       INT          NOT NULL,
+  SoTietLyThuyet INT          NOT NULL DEFAULT 0,
+  SoTietThucHanh INT          NOT NULL DEFAULT 0,
+  IsTuChon       TINYINT(1)   NOT NULL DEFAULT 0,
+  IsMonChung     TINYINT(1)   NOT NULL DEFAULT 0,
+  MaKKT          VARCHAR(40)  NOT NULL,
+  MaBoMon        VARCHAR(20)  NOT NULL,
+  FOREIGN KEY (MaKKT)   REFERENCES KhoiKienThuc(MaKKT),
+  FOREIGN KEY (MaBoMon) REFERENCES BoMon(MaBoMon)
+);
+
+CREATE TABLE GiangVienMonHoc (
+  MaGV     VARCHAR(20) NOT NULL,
+  MaMonHoc VARCHAR(40) NOT NULL,
+  PRIMARY KEY (MaGV, MaMonHoc),
+  FOREIGN KEY (MaGV)     REFERENCES GiangVien(MaGV),
+  FOREIGN KEY (MaMonHoc) REFERENCES MonHoc(MaMonHoc)
+);
+
+CREATE TABLE NhomHoc (
+  MaNhomHoc VARCHAR(60)  PRIMARY KEY,
+  TenNhom   VARCHAR(30)  NOT NULL,
+  SiSo      INT          NOT NULL DEFAULT 0,
+  MaMonHoc  VARCHAR(40)  NOT NULL,
+  MaHocKy   VARCHAR(20)  NOT NULL,
+  MaPhong   VARCHAR(20)  NULL,
+  Thu       TINYINT      NOT NULL,
+  Ca        TINYINT      NOT NULL,
+  SoGio     DECIMAL(5,1) NOT NULL,
+  FOREIGN KEY (MaMonHoc) REFERENCES MonHoc(MaMonHoc),
+  FOREIGN KEY (MaHocKy)  REFERENCES HocKy(MaHocKy),
+  FOREIGN KEY (MaPhong)  REFERENCES PhongHoc(MaPhong),
+  CONSTRAINT ck_nhom_thu CHECK (Thu BETWEEN 2 AND 7),
+  CONSTRAINT ck_nhom_ca  CHECK (Ca BETWEEN 1 AND 5)
+);
+
+CREATE TABLE LichBan (
+  MaGV    VARCHAR(20) NOT NULL,
+  MaHocKy VARCHAR(20) NOT NULL,
+  Thu     TINYINT     NOT NULL,
+  Ca      TINYINT     NOT NULL,
+  PRIMARY KEY (MaGV, MaHocKy, Thu, Ca),
+  FOREIGN KEY (MaGV)    REFERENCES GiangVien(MaGV),
+  FOREIGN KEY (MaHocKy) REFERENCES HocKy(MaHocKy)
+);
+
+CREATE TABLE NguyenVong (
+  MaNV        BIGINT AUTO_INCREMENT PRIMARY KEY,
+  MaGV        VARCHAR(20) NOT NULL,
+  MaNhomHoc   VARCHAR(60) NOT NULL,
+  ThuTuUuTien TINYINT     NOT NULL,
+  NgayDangKy  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_nv_gv_nhom (MaGV, MaNhomHoc),
+  FOREIGN KEY (MaGV)      REFERENCES GiangVien(MaGV),
+  FOREIGN KEY (MaNhomHoc) REFERENCES NhomHoc(MaNhomHoc)
+);
+
+CREATE TABLE PhanCong (
+  MaPhanCong    BIGINT AUTO_INCREMENT PRIMARY KEY,
+  MaNhomHoc     VARCHAR(60) NOT NULL,
+  MaGV          VARCHAR(20) NOT NULL,
+  TrangThai     VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  NguoiPhanCong VARCHAR(50),
+  DaGhim        TINYINT(1)  NOT NULL DEFAULT 0,
+  Nguon         VARCHAR(20) NOT NULL DEFAULT 'MANUAL',
+  NgayCapNhat   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_pc_nhom (MaNhomHoc),
+  FOREIGN KEY (MaNhomHoc) REFERENCES NhomHoc(MaNhomHoc),
+  FOREIGN KEY (MaGV)      REFERENCES GiangVien(MaGV),
+  CONSTRAINT ck_pc_nguon CHECK (Nguon IN ('MANUAL','NGUYEN_VONG','SOLVER'))
+);
+
+CREATE TABLE TaiKhoan (
+  MaTK        BIGINT AUTO_INCREMENT PRIMARY KEY,
+  TenDangNhap VARCHAR(50)  NOT NULL UNIQUE,
+  MatKhauHash VARCHAR(100) NOT NULL,
+  VaiTro      VARCHAR(10)  NOT NULL,
+  MaGV        VARCHAR(20)  NULL,
+  FOREIGN KEY (MaGV) REFERENCES GiangVien(MaGV),
+  CONSTRAINT ck_tk_vaitro CHECK (VaiTro IN ('TLDT','GV','TBM','BCN'))
+);
+
+CREATE TABLE SolverRun (
+  MaRun         BIGINT AUTO_INCREMENT PRIMARY KEY,
+  MaHocKy       VARCHAR(20) NOT NULL,
+  MaBoMon       VARCHAR(20) NOT NULL,
+  TrangThai     VARCHAR(20) NOT NULL,
+  ElapsedMs     INT         NOT NULL DEFAULT 0,
+  InputRevision INT         NOT NULL,
+  KetQuaJson    LONGTEXT    NULL,
+  NgayTao       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  NguoiTao      VARCHAR(50),
+  FOREIGN KEY (MaHocKy) REFERENCES HocKy(MaHocKy),
+  FOREIGN KEY (MaBoMon) REFERENCES BoMon(MaBoMon)
+);
