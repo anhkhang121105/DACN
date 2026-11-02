@@ -13,5 +13,5 @@ spring:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 app:
   jwt:
-    secret: ${JWT_SECRET:chuoi-bi-mat-dev-dai-it-nhat-32-ky-tu-123456}
+    secret: ${JWT_SECRET}
     expiration-minutes: 480
