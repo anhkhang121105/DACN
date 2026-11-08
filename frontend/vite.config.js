@@ -8,9 +8,6 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    fs: {
-      allow: ['C:/pcgv', 'C:/pcgv/frontend'],
-    },
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
