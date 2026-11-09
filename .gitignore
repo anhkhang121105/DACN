@@ -1,37 +1,35 @@
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# Operating system files
+.DS_Store
+Thumbs.db
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
+# IDE and editor files
+.idea/
 *.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
 .vscode/
 
-# Environment
+# Java / Maven build output
+**/target/
+*.class
+
+# Node.js dependencies and Vite output
+**/node_modules/
+**/dist/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime logs and JVM crash dumps
+logs/
+*.log
+hs_err_pid*
+replay_pid*
+
+# Local environment and secrets
 .env
 .env.*
+!.env.example
+
+# Generated repository reports
+repomix-output.xml
