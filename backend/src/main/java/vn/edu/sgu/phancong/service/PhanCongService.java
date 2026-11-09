@@ -21,7 +21,9 @@ import vn.edu.sgu.phancong.rules.RulesEngine;
 import vn.edu.sgu.phancong.security.SecurityUtils;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +35,7 @@ public class PhanCongService {
     private final RulesEngine rulesEngine;
     private final CsrService csrService;
     private final SolverService solverService;
+    private final AuditLogService auditLogService;
 
     public List<NhomHocPhan> theoHocKy(Integer hocKyId, Integer boMonId) {
         return nhomHocPhanRepository.findByKeHoachHocKyId(hocKyId).stream()
@@ -60,11 +63,14 @@ public class PhanCongService {
             throw new BadRequestException("Vi phạm luật cứng: " + message);
         }
 
+        Map<String, Object> oldValue = trangThaiPhanCong(nhom);
         nhom.setGiangVien(gv);
         nhom.setNguon(NguonPhanCong.THU_CONG);
         nhom.setIsFixed(isFixed == null || isFixed);
         NhomHocPhan saved = nhomHocPhanRepository.save(nhom);
         capNhatCsr(nhom);
+        auditLogService.ghi("GAN_PHAN_CONG", "nhom_hoc_phan", nhomId,
+            oldValue, trangThaiPhanCong(saved));
 
         return PhanCongResult.builder()
                 .nhom(saved)
@@ -81,11 +87,14 @@ public class PhanCongService {
         if (nhom.getGiangVien() == null) {
             throw new BadRequestException("Nhóm chưa được phân công");
         }
+        Map<String, Object> oldValue = trangThaiPhanCong(nhom);
         nhom.setGiangVien(null);
         nhom.setNguon(NguonPhanCong.CHUA);
         nhom.setIsFixed(false);
         NhomHocPhan saved = nhomHocPhanRepository.save(nhom);
         capNhatCsr(nhom);
+        auditLogService.ghi("HUY_PHAN_CONG", "nhom_hoc_phan", nhomId,
+            oldValue, trangThaiPhanCong(saved));
         return PhanCongResult.builder().nhom(saved).violations(List.of()).thanhCong(true).build();
     }
 
@@ -113,7 +122,15 @@ public class PhanCongService {
     }
 
     public SolverResult goiY(Integer boMonId, Integer hocKyId) {
-        return solverService.solve(boMonId, hocKyId);
+        SolverResult result = solverService.solve(boMonId, hocKyId);
+        Map<String, Object> newValue = new LinkedHashMap<>();
+        newValue.put("bo_mon_id", boMonId);
+        newValue.put("hoc_ky_id", hocKyId);
+        newValue.put("status", result.getStatus());
+        newValue.put("so_luong_goi_y", result.getAssignments() == null ? 0 : result.getAssignments().size());
+        newValue.put("objective_value", result.getObjectiveValue());
+        auditLogService.ghi("CHAY_SOLVER", "hoc_ky", hocKyId, null, newValue);
+        return result;
     }
 
     @Transactional
@@ -128,10 +145,14 @@ public class PhanCongService {
             kiemTraQuyen(nhom);
             GiangVien gv = giangVienRepository.findById(a.getGiangVienId())
                     .orElseThrow(() -> new NotFoundException("Giảng viên", a.getGiangVienId()));
+                Map<String, Object> oldValue = trangThaiPhanCong(nhom);
             nhom.setGiangVien(gv);
             nhom.setNguon(NguonPhanCong.CP_SAT);
             nhom.setIsFixed(false);
-            updated.add(nhomHocPhanRepository.save(nhom));
+                NhomHocPhan saved = nhomHocPhanRepository.save(nhom);
+                updated.add(saved);
+                auditLogService.ghi("GAN_PHAN_CONG_TU_SOLVER", "nhom_hoc_phan", a.getNhomId(),
+                    oldValue, trangThaiPhanCong(saved));
         }
         if (!updated.isEmpty()) {
             capNhatCsr(updated.get(0));
@@ -158,5 +179,13 @@ public class PhanCongService {
         if (boMonId != null) {
             csrService.capNhatKeHoach(boMonId, namHocId);
         }
+    }
+
+    private Map<String, Object> trangThaiPhanCong(NhomHocPhan nhom) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("giang_vien_id", nhom.getGiangVien() == null ? null : nhom.getGiangVien().getId());
+        value.put("nguon", nhom.getNguon());
+        value.put("is_fixed", nhom.getIsFixed());
+        return value;
     }
 }

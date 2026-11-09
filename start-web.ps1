@@ -21,10 +21,10 @@ $dbUser = if ($env:DB_USERNAME) { $env:DB_USERNAME } else { 'root' }
 
 New-Item -ItemType Directory -Force -Path $logs | Out-Null
 
-function Test-Port([string]$host, [int]$port) {
+function Test-Port([string]$serverHost, [int]$port) {
   $client = New-Object System.Net.Sockets.TcpClient
   try {
-    $client.Connect($host, $port)
+    $client.Connect($serverHost, $port)
     return $true
   } catch {
     return $false
@@ -33,9 +33,9 @@ function Test-Port([string]$host, [int]$port) {
   }
 }
 
-function Wait-Port([string]$host, [int]$port, [int]$seconds) {
+function Wait-Port([string]$serverHost, [int]$port, [int]$seconds) {
   for ($i = 0; $i -lt $seconds; $i++) {
-    if (Test-Port $host $port) { return $true }
+    if (Test-Port $serverHost $port) { return $true }
     Start-Sleep -Seconds 1
   }
   return $false

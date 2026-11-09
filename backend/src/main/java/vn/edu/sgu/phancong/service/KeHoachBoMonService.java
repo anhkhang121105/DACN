@@ -18,7 +18,9 @@ import vn.edu.sgu.phancong.security.SecurityUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class KeHoachBoMonService {
     private final NamHocRepository namHocRepository;
     private final BoMonRepository boMonRepository;
     private final CsrService csrService;
+    private final AuditLogService auditLogService;
 
     public List<KeHoachBoMon> findAll(Integer namHocId, Integer boMonId) {
         List<KeHoachBoMon> all = namHocId != null ? repository.findByNamHocId(namHocId) : repository.findAll();
@@ -79,10 +82,13 @@ public class KeHoachBoMonService {
         if (k.getTrangThai() != TrangThaiKeHoach.SUBMITTED) {
             throw new BadRequestException("Chỉ duyệt kế hoạch đã nộp");
         }
+        Map<String, Object> oldValue = trangThaiKeHoach(k);
         k.setTrangThai(TrangThaiKeHoach.APPROVED);
         k.setNguoiDuyet(SecurityUtils.getCurrentUserId());
         k.setNgayDuyet(LocalDateTime.now());
         KeHoachBoMon saved = repository.save(k);
+        auditLogService.ghi("DUYET_KE_HOACH_BO_MON", "ke_hoach_bo_mon", id,
+            oldValue, trangThaiKeHoach(saved));
 
         tryKhoaNamHoc(k.getNamHoc().getId());
         return saved;
@@ -97,11 +103,15 @@ public class KeHoachBoMonService {
         if (lyDo == null || lyDo.isBlank()) {
             throw new BadRequestException("Phải nhập lý do trả về");
         }
+        Map<String, Object> oldValue = trangThaiKeHoach(k);
         k.setTrangThai(TrangThaiKeHoach.RETURNED);
         k.setLyDoTraVe(lyDo);
         k.setNguoiDuyet(SecurityUtils.getCurrentUserId());
         k.setNgayDuyet(LocalDateTime.now());
-        return repository.save(k);
+        KeHoachBoMon saved = repository.save(k);
+        auditLogService.ghi("TRA_VE_KE_HOACH_BO_MON", "ke_hoach_bo_mon", id,
+            oldValue, trangThaiKeHoach(saved));
+        return saved;
     }
 
     public CsrResult csrHienTai(Integer id) {
@@ -118,10 +128,25 @@ public class KeHoachBoMonService {
         long daDuyet = repository.countByNamHocIdAndTrangThai(namHocId, TrangThaiKeHoach.APPROVED);
         if (tongBoMon > 0 && daDuyet >= tongBoMon) {
             NamHoc namHoc = namHocRepository.findById(namHocId).orElse(null);
-            if (namHoc != null) {
+            if (namHoc != null && namHoc.getTrangThai() != TrangThaiNamHoc.DA_KHOA) {
+                Map<String, Object> oldValue = new LinkedHashMap<>();
+                oldValue.put("trang_thai", namHoc.getTrangThai());
                 namHoc.setTrangThai(TrangThaiNamHoc.DA_KHOA);
-                namHocRepository.save(namHoc);
+                NamHoc saved = namHocRepository.save(namHoc);
+                Map<String, Object> newValue = new LinkedHashMap<>();
+                newValue.put("trang_thai", saved.getTrangThai());
+                auditLogService.ghi("KHOA_NAM_HOC", "nam_hoc", namHocId, oldValue, newValue);
             }
         }
+    }
+
+    private Map<String, Object> trangThaiKeHoach(KeHoachBoMon keHoach) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("trang_thai", keHoach.getTrangThai());
+        value.put("csr", keHoach.getCsr());
+        value.put("ly_do_tra_ve", keHoach.getLyDoTraVe());
+        value.put("nguoi_duyet", keHoach.getNguoiDuyet());
+        value.put("ngay_duyet", keHoach.getNgayDuyet());
+        return value;
     }
 }

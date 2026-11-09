@@ -10,8 +10,11 @@ import vn.edu.sgu.phancong.entity.enums.TrangThaiNamHoc;
 import vn.edu.sgu.phancong.exception.NotFoundException;
 import vn.edu.sgu.phancong.repository.HocKyRepository;
 import vn.edu.sgu.phancong.repository.NamHocRepository;
+import vn.edu.sgu.phancong.service.AuditLogService;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/hoc-ky")
@@ -20,6 +23,7 @@ public class HocKyController {
 
     private final HocKyRepository repository;
     private final NamHocRepository namHocRepository;
+    private final AuditLogService auditLogService;
 
     @GetMapping
     public List<HocKy> findAll(@RequestParam(required = false) Integer namHocId) {
@@ -81,8 +85,14 @@ public class HocKyController {
     public NamHoc khoaNamHoc(@PathVariable Integer id) {
         HocKy existing = findOne(id);
         NamHoc namHoc = existing.getNamHoc();
+        Map<String, Object> oldValue = new LinkedHashMap<>();
+        oldValue.put("trang_thai", namHoc.getTrangThai());
         namHoc.setTrangThai(TrangThaiNamHoc.DA_KHOA);
-        return namHocRepository.save(namHoc);
+        NamHoc saved = namHocRepository.save(namHoc);
+        Map<String, Object> newValue = new LinkedHashMap<>();
+        newValue.put("trang_thai", saved.getTrangThai());
+        auditLogService.ghi("KHOA_NAM_HOC", "nam_hoc", saved.getId(), oldValue, newValue);
+        return saved;
     }
 
     @DeleteMapping("/{id}")

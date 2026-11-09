@@ -63,11 +63,13 @@ Lệnh này dừng frontend và backend, không xóa hoặc dừng MySQL của X
 
 ## Cấu hình MySQL
 
-### XAMPP hoặc MySQL không đặt mật khẩu
+Nếu chạy backend trực tiếp thay vì dùng `start-web.ps1`, hãy đặt `DB_PASSWORD` theo tài khoản MySQL của máy. Với Docker Compose, password là `root`; với XAMPP mặc định, password thường để trống.
+
+### Trường hợp XAMPP hoặc MySQL không đặt mật khẩu
 
 Không cần đặt thêm biến môi trường. Script sẽ thử mật khẩu rỗng.
 
-### MySQL dùng mật khẩu `root`
+### Trường hợp MySQL dùng mật khẩu `root`
 
 Script sẽ tự thử mật khẩu `root` nếu `DB_PASSWORD` chưa được đặt.
 
@@ -109,6 +111,8 @@ Sau đó chạy backend và frontend thủ công:
 
 ```powershell
 cd backend
+$env:DB_USERNAME = "root"
+$env:DB_PASSWORD = "root"
 mvn spring-boot:run
 ```
 
