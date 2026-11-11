@@ -92,7 +92,7 @@ if (-not (Test-Port '127.0.0.1' 8080)) {
 if (-not (Test-Port '127.0.0.1' 5173)) {
   Write-Host 'Starting frontend on port 5173...'
   if (-not (Get-Command npm -ErrorAction SilentlyContinue)) { throw 'Khong tim thay npm. Hay cai Node.js va dat npm vao PATH.' }
-  if (-not (Test-Path (Join-Path $frontend 'node_modules'))) {
+  if (-not (Test-Path (Join-Path $frontend 'node_modules\vite'))) {
     Write-Host 'Installing frontend dependencies...'
     Push-Location $frontend
     & npm install
